@@ -2,6 +2,9 @@ package de.seuhd.ktcodingagent.context
 
 import kotlinx.serialization.Serializable
 import java.nio.file.Path
+import java.nio.file.Files
+
+// ...existing code...
 
 /**
  * Snapshot of stable facts about the workspace, captured once at agent startup.
@@ -63,6 +66,68 @@ data class WorkspaceContext(
  */
 object WorkspaceContextLoader {
     fun load(cwd: Path, walkToRepoRoot: Boolean = true): WorkspaceContext {
-        TODO("Implement WorkspaceContext.load (sub-exercise (b)).")
+        val repoRoot = runGitCommand(cwd, "rev-parse", "--show-toplevel")?.let { Path.of(it) } ?: cwd
+        val branch = runGitCommand(cwd, "branch", "--show-current") ?: "-"
+        val defaultBranch = (runGitCommand(cwd, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+            ?.removePrefix("origin/") ?: "origin/main")
+        val status = (runGitCommand(cwd, "status", "--short") ?: "clean").take(1500)
+        val recentCommits = (runGitCommand(cwd, "log", "--oneline", "-5") ?: "")
+            .split("\n")
+            .filter { it.isNotBlank() }
+
+        val projectDocs = mutableMapOf<String, String>()
+        val searchPaths = if (walkToRepoRoot) listOf(cwd, repoRoot) else listOf(cwd)
+        val seen = mutableSetOf<String>()
+
+        for (searchPath in searchPaths) {
+            for (docName in listOf("AGENTS.md", "README.md", "build.gradle.kts")) {
+                val docFile = searchPath.resolve(docName)
+                if (Files.isRegularFile(docFile)) {
+                    val content = try {
+                        val fullContent = Files.readString(docFile)
+                        if (fullContent.length > 1200) {
+                            fullContent.take(1200) + "\n...[truncated ${fullContent.length - 1200} chars]"
+                        } else {
+                            fullContent
+                        }
+                    } catch (e: Exception) {
+                        continue
+                    }
+                    val relPath = if (docName in seen) {
+                        "${searchPath.fileName}/$docName"
+                    } else {
+                        docName
+                    }
+                    if (relPath !in seen) {
+                        projectDocs[relPath] = content
+                        seen.add(relPath)
+                    }
+                }
+            }
+        }
+
+        return WorkspaceContext(
+            cwd = cwd.toString(),
+            repoRoot = repoRoot.toString(),
+            branch = branch,
+            defaultBranch = defaultBranch,
+            status = status,
+            recentCommits = recentCommits,
+            projectDocs = projectDocs
+        )
+    }
+
+    private fun runGitCommand(cwd: Path, vararg args: String): String? {
+        return try {
+            val process = ProcessBuilder("git", *args)
+                .directory(cwd.toFile())
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+            val exitCode = process.waitFor()
+            if (exitCode == 0 && output.isNotEmpty()) output else null
+        } catch (e: Exception) {
+            null
+        }
     }
 }

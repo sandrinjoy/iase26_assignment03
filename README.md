@@ -137,7 +137,7 @@ To test against the larger model on the assignment repo itself (no `--cwd`), run
 from the repo root:
 
 ```bash
-./gradlew run --console=plain --args="--model qwen3.5:9b"
+./gradlew run --console=plain --args="--model qwen3.5:4b"
 ```
 
 ### Self-contained workspaces: `--no-repo-walk`

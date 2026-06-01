@@ -21,21 +21,21 @@ object Validation {
             "list_files" -> Unit // path is optional and defaults to "."
             "read_file" -> {
                 val path = stringArg(args, "path")
-                    ?: throw ToolValidationException("missing or non-string required argument: path")
-                if (path.isBlank()) throw ToolValidationException("path must not be empty")
+                    ?: throw ToolValidationException("invalid arguments for read_file: missing or non-string required argument: path")
+                if (path.isBlank()) throw ToolValidationException("invalid arguments for read_file: path must not be empty")
                 val start = intArg(args, "start") ?: 1
                 val end = intArg(args, "end") ?: 200
-                if (start !in 1..end) throw ToolValidationException("invalid line range")
+                if (start !in 1..end) throw ToolValidationException("invalid arguments for read_file: invalid line range")
             }
             "write_file" -> {
                 val path = stringArg(args, "path")
-                    ?: throw ToolValidationException("missing or non-string required argument: path")
-                if (path.isBlank()) throw ToolValidationException("path must not be empty")
+                    ?: throw ToolValidationException("invalid arguments for write_file: missing or non-string required argument: path")
+                if (path.isBlank()) throw ToolValidationException("invalid arguments for write_file: path must not be empty")
                 if (!args.containsKey("content")) {
-                    throw ToolValidationException("missing required argument: content")
+                    throw ToolValidationException("invalid arguments for write_file: missing required argument: content")
                 }
                 if (stringArg(args, "content") == null) {
-                    throw ToolValidationException("content must be a string")
+                    throw ToolValidationException("invalid arguments for write_file: content must be a string")
                 }
             }
         }
